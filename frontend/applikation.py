@@ -1,19 +1,19 @@
-import streamlit as st
 import pandas as pd
 import requests
+import streamlit as st
 
 BACKEND_URL = "http://localhost:8000"
 
 st.title("Mein Buchungssystem")
 
-# ── 1. Buchung erfassen ──────────────────────────────────────────────────────
 st.header("Neue Buchung erfassen")
 
 name = st.text_input("Beschreibung der Buchung")
 datum = st.date_input("Datum")
 typ = st.selectbox("Typ", options=["Einnahme", "Ausgabe"])
-kategorie = st.text_input("Kategorie (z.B. Miete, Gehalt, Verkauf)")
-betrag = st.number_input("Betrag (€)", min_value=0.0)
+kategorie = st.text_input("Kategorie (z.B. Einkauf, Verkauf, Miete, Gehalt)")
+ware = st.text_input("Ware / Produkt (z.B. Milka, Schogetten, Snickers)")
+betrag = st.number_input("Betrag (€)", min_value=0.0, step=1.0)
 
 if st.button("Buchung abschicken"):
     daten = {
@@ -22,31 +22,66 @@ if st.button("Buchung abschicken"):
         "typ": typ,
         "kategorie": kategorie,
         "betrag": betrag,
+        "ware": ware if ware.strip() else "Allgemein",
     }
+
     antwort = requests.post(f"{BACKEND_URL}/buchungen", json=daten)
+
     if antwort.status_code == 200:
         st.success(f"Buchung '{name}' über {betrag} € wurde gespeichert!")
     else:
         st.error("Fehler beim Speichern. Ist das Backend gestartet?")
 
-# ── 2. Alle Buchungen anzeigen ───────────────────────────────────────────────
 st.header("Alle Buchungen")
 
-antwort = requests.get(f"{BACKEND_URL}/buchungen")
-buchungen = antwort.json()
+try:
+    antwort = requests.get(f"{BACKEND_URL}/buchungen")
+    buchungen = antwort.json()
 
-if buchungen:
-    df = pd.DataFrame(buchungen)
-    st.dataframe(df, use_container_width=True)
-else:
-    st.info("Noch keine Buchungen vorhanden.")
+    if buchungen:
+        df = pd.DataFrame(buchungen)
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.info("Noch keine Buchungen vorhanden.")
+except requests.exceptions.ConnectionError:
+    st.error("Backend nicht erreichbar. Bitte starte zuerst FastAPI.")
 
-# ── 3. GuV-Auswertung ────────────────────────────────────────────────────────
 st.header("Gewinn- und Verlustrechnung (GuV)")
 
-guv = requests.get(f"{BACKEND_URL}/auswertung/guv").json()
+try:
+    guv = requests.get(f"{BACKEND_URL}/auswertung/guv").json()
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Einnahmen", f"{guv['einnahmen']} €")
-col2.metric("Ausgaben",  f"{guv['ausgaben']} €")
-col3.metric("Ergebnis",  f"{guv['ergebnis']} €")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Einnahmen", f"{guv['einnahmen']} €")
+    col2.metric("Ausgaben", f"{guv['ausgaben']} €")
+    col3.metric("Ergebnis", f"{guv['ergebnis']} €")
+except requests.exceptions.ConnectionError:
+    st.error("GuV konnte nicht geladen werden.")
+
+st.header("Warenvergleich und Investitionsentscheidung")
+
+try:
+    antwort = requests.get(f"{BACKEND_URL}/auswertung/waren")
+
+    if antwort.status_code == 200:
+        waren_auswertung = antwort.json()
+        daten = waren_auswertung["daten"]
+
+        if daten:
+            waren_df = pd.DataFrame(daten)
+
+            st.subheader("Vergleich nach Waren")
+            st.dataframe(waren_df, use_container_width=True)
+
+            st.subheader("Gewinn pro Ware")
+            chart_df = waren_df.set_index("ware")[["einnahmen", "kosten", "gewinn"]]
+            st.bar_chart(chart_df)
+
+            st.subheader("Empfehlung")
+            st.success(waren_auswertung["empfehlung"])
+        else:
+            st.info("Noch keine Waren-Daten vorhanden.")
+    else:
+        st.error("Warenvergleich konnte nicht geladen werden.")
+except requests.exceptions.ConnectionError:
+    st.error("Warenvergleich konnte nicht geladen werden. Bitte Backend starten.")
