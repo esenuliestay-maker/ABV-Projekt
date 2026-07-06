@@ -1,3 +1,5 @@
+﻿from datetime import date
+
 import pandas as pd
 import requests
 import streamlit as st
@@ -16,13 +18,17 @@ ware = st.text_input("Ware / Produkt (z.B. Milka, Schogetten, Snickers)")
 betrag = st.number_input("Betrag (€)", min_value=0.0, step=1.0)
 
 if st.button("Buchung abschicken"):
+    # Wenn das Warenfeld leer ist, setzen wir "Allgemein" ein.
+    if ware.strip() == "":
+        ware = "Allgemein"
+
     daten = {
         "datum": str(datum),
         "beschreibung": name,
         "typ": typ,
         "kategorie": kategorie,
         "betrag": betrag,
-        "ware": ware if ware.strip() else "Allgemein",
+        "ware": ware,
     }
 
     antwort = requests.post(f"{BACKEND_URL}/buchungen", json=daten)
@@ -48,8 +54,16 @@ except requests.exceptions.ConnectionError:
 
 st.header("Gewinn- und Verlustrechnung (GuV)")
 
+# Zeitraum fuer die GuV auswaehlen.
+# Standard: vom 1. Januar des aktuellen Jahres bis heute.
+guv_von = st.date_input("GuV von", value=date(date.today().year, 1, 1))
+guv_bis = st.date_input("GuV bis", value=date.today())
+
 try:
-    guv = requests.get(f"{BACKEND_URL}/auswertung/guv").json()
+    params = {"von": str(guv_von), "bis": str(guv_bis)}
+    guv = requests.get(f"{BACKEND_URL}/auswertung/guv", params=params).json()
+
+    st.caption(f"Zeitraum: {guv_von} bis {guv_bis}")
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Einnahmen", f"{guv['einnahmen']} €")
@@ -85,3 +99,4 @@ try:
         st.error("Warenvergleich konnte nicht geladen werden.")
 except requests.exceptions.ConnectionError:
     st.error("Warenvergleich konnte nicht geladen werden. Bitte Backend starten.")
+
