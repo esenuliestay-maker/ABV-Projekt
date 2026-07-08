@@ -52,7 +52,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"status": "Das Backend lÃ¤uft."}
+    return {"status": "Das Backend läuft."}
 
 
 @app.post("/buchungen")
@@ -97,7 +97,7 @@ def buchung_loeschen(buchung_id: int):
     conn.commit()
     conn.close()
 
-    return {"message": "Buchung gelÃ¶scht."}
+    return {"message": "Buchung gelöscht."}
 
 
 @app.get("/auswertung/guv")

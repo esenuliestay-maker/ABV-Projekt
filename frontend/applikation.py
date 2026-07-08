@@ -14,7 +14,7 @@ name = st.text_input("Beschreibung der Buchung")
 datum = st.date_input("Datum")
 typ = st.selectbox("Typ", options=["Einnahme", "Ausgabe"])
 kategorie = st.text_input("Kategorie (z.B. Einkauf, Verkauf, Miete, Gehalt)")
-ware = st.text_input("Ware / Produkt (z.B. Milka, Schogetten, Snickers)")
+ware = st.text_input("Ware / Produkt (z.B. Milka, Schogetten, Snickers, bei Buchungen, die Buchungen, die keine Ware betreffen, leer lassen.)")
 betrag = st.number_input("Betrag (€)", min_value=0.0, step=1.0)
 
 if st.button("Buchung abschicken"):
